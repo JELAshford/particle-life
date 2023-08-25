@@ -51,17 +51,10 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity *= friction_factor;
             new_p.velocity += total_force * TIME_STEP;
 
-            // Push in from edges
-            if new_p.position.x > 0.99 {
-                new_p.velocity.x -= EDGE_FORCE;
-            } else if new_p.position.x < 0.01 {
-                new_p.velocity.x += EDGE_FORCE
-            }
-            if new_p.position.y > 0.99 {
-                new_p.velocity.y -= EDGE_FORCE;
-            } else if new_p.position.y < 0.01 {
-                new_p.velocity.y += EDGE_FORCE
-            }
+            // Push toward centre
+            let vector_to_center = new_p.position - Vector2 { x: 0.5, y: 0.5 };
+            new_p.velocity -= vector_to_center.normalized() * vector_to_center.length_sqr() / 16.;
+
             new_p
         })
         .collect();
@@ -80,8 +73,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
 const WIDTH: i32 = 1000;
 const HEIGHT: i32 = 1000;
 const MAX_RADIUS: f32 = 0.1;
-const TIME_STEP: f32 = 0.04; // 0.02
-const EDGE_FORCE: f32 = 0.01;
+const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
 const NUM_PARTICLES: usize = 2000;
 
