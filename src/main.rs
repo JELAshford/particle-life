@@ -111,6 +111,19 @@ fn main() {
 
         population = update_population(&population, &attraction_matrix);
 
+        if d.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
+            let mut mouse_pos = d.get_mouse_position();
+            mouse_pos.x /= WIDTH as f32;
+            mouse_pos.y /= HEIGHT as f32;
+            population = population
+                .iter_mut()
+                .map(|p| {
+                    p.velocity -= (p.position - mouse_pos).normalized() * 0.5;
+                    *p
+                })
+                .collect();
+        }
+
         for p in &population {
             d.draw_circle(
                 (p.position.x * WIDTH as f32) as i32,
