@@ -52,8 +52,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity += total_force * TIME_STEP;
 
             // Push toward centre
-            let vector_to_center = new_p.position - Vector2 { x: 0.5, y: 0.5 };
-            new_p.velocity -= vector_to_center.normalized() * vector_to_center.length_sqr() / 16.;
+            new_p.velocity -= (new_p.position - Vector2 { x: 0.5, y: 0.5 }) / 16.;
 
             new_p
         })
@@ -78,7 +77,7 @@ const FRICTION_HALF_LIFE: f32 = 0.04;
 const NUM_PARTICLES: usize = 2000;
 
 fn main() {
-    let mut rng = rand::thread_rng();
+    let mut rng: ThreadRng = rand::thread_rng();
     let colors: Vec<Color> = vec![
         Color::RED,
         Color::BLUE,
