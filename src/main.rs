@@ -107,6 +107,7 @@ fn main() {
     while !rl.window_should_close() {
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::BLACK);
+        d.draw_fps(0, 0);
 
         population = update_population(&population, &attraction_matrix);
 
