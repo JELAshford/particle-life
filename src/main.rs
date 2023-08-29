@@ -1,5 +1,6 @@
 use rand::{rngs::ThreadRng, seq::IteratorRandom, Rng};
 use raylib::prelude::*;
+use rayon::prelude::*;
 
 #[derive(PartialEq, Clone, Copy)]
 struct Particle {
@@ -29,7 +30,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
 
     // Update velocity
     let new_population: Vec<Particle> = population
-        .iter()
+        .par_iter()
         .map(|p1| {
             let mut total_force: Vector2 = Vector2::zero();
             for p2 in population {
