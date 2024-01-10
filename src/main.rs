@@ -72,7 +72,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
 const MAX_RADIUS: f32 = 0.1;
 const TIME_STEP: f32 = 0.01;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 5000;
+const NUM_PARTICLES: usize = 3000;
 
 fn conf() -> Conf {
     Conf {
