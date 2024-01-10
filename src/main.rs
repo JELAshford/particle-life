@@ -1,4 +1,3 @@
-use ::rand::{rngs::ThreadRng, seq::IteratorRandom, Rng};
 use macroquad::prelude::*;
 use rayon::prelude::*;
 
@@ -9,9 +8,9 @@ struct Particle {
     velocity: Vec2,
 }
 
-fn flat_matrix(side_length: usize, rng_obj: &mut ThreadRng) -> Vec<f32> {
+fn flat_matrix(side_length: usize) -> Vec<f32> {
     (0..(side_length * side_length))
-        .map(|_| (rng_obj.gen::<f32>() - 0.5) * 2.)
+        .map(|_| rand::gen_range(-1., 1.))
         .collect()
 }
 
@@ -86,14 +85,13 @@ fn conf() -> Conf {
 
 #[macroquad::main(conf)]
 async fn main() {
-    let mut rng: ThreadRng = ::rand::thread_rng();
     let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
-    let attraction_matrix = flat_matrix(colors.len(), &mut rng);
+    let attraction_matrix = flat_matrix(colors.len());
 
     let mut population: Vec<Particle> = (0..NUM_PARTICLES)
         .map(|_| Particle {
-            color: (0..colors.len()).choose(&mut rng).expect(""),
-            position: vec2(rng.gen::<f32>(), rng.gen::<f32>()),
+            color: rand::gen_range(0, colors.len()),
+            position: vec2(rand::gen_range(0., 1.), rand::gen_range(0., 1.)),
             velocity: Vec2::ZERO,
         })
         .collect();
