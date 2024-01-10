@@ -1,12 +1,12 @@
-use rand::{rngs::ThreadRng, seq::IteratorRandom, Rng};
-use raylib::prelude::*;
+use ::rand::{rngs::ThreadRng, seq::IteratorRandom, Rng};
+use macroquad::prelude::*;
 use rayon::prelude::*;
 
 #[derive(PartialEq, Clone, Copy)]
 struct Particle {
     color: usize,
-    position: Vector2,
-    velocity: Vector2,
+    position: Vec2,
+    velocity: Vec2,
 }
 
 fn flat_matrix(side_length: usize, rng_obj: &mut ThreadRng) -> Vec<f32> {
@@ -29,15 +29,15 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
     let friction_factor: f32 = 0.5_f32.powf(TIME_STEP / FRICTION_HALF_LIFE);
 
     // Update velocity
-    let new_population: Vec<Particle> = population
+    let mut new_population: Vec<Particle> = population
         .par_iter()
         .map(|p1| {
-            let mut total_force: Vector2 = Vector2::zero();
+            let mut total_force = Vec2::ZERO;
             for p2 in population {
                 if p1 == p2 {
                     continue;
                 };
-                let distance = p1.position.distance_to(p2.position);
+                let distance = p1.position.distance(p2.position);
                 if (distance > 0.) & (distance < MAX_RADIUS) {
                     let f = force(
                         distance / MAX_RADIUS,
@@ -53,7 +53,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity += total_force * TIME_STEP;
 
             // Push toward centre
-            new_p.velocity -= (new_p.position - Vector2 { x: 0.5, y: 0.5 }) / 16.;
+            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 16.;
 
             new_p
         })
@@ -61,77 +61,70 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
 
     // update positions
     new_population
-        .iter()
+        .iter_mut()
         .map(|p| {
-            let mut new_p = *p;
-            new_p.position += new_p.velocity * TIME_STEP;
-            new_p
+            p.position += p.velocity * TIME_STEP;
+            *p
         })
         .collect()
 }
 
-const WIDTH: i32 = 1000;
-const HEIGHT: i32 = 1000;
 const MAX_RADIUS: f32 = 0.1;
 const TIME_STEP: f32 = 0.01;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 2000;
+const NUM_PARTICLES: usize = 5000;
 
-fn main() {
-    let mut rng: ThreadRng = rand::thread_rng();
-    let colors: Vec<Color> = vec![
-        Color::RED,
-        Color::BLUE,
-        Color::GREEN,
-        Color::WHITE,
-        Color::GRAY,
-        Color::SKYBLUE,
-        Color::ORANGE,
-        Color::PINK,
-        Color::PURPLE,
-    ];
+fn conf() -> Conf {
+    Conf {
+        window_title: String::from("Particle Life"),
+        window_width: 800,
+        window_height: 800,
+        fullscreen: false,
+        ..Default::default()
+    }
+}
+
+#[macroquad::main(conf)]
+async fn main() {
+    let mut rng: ThreadRng = ::rand::thread_rng();
+    let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
     let attraction_matrix = flat_matrix(colors.len(), &mut rng);
 
     let mut population: Vec<Particle> = (0..NUM_PARTICLES)
         .map(|_| Particle {
             color: (0..colors.len()).choose(&mut rng).expect(""),
-            position: rvec2(rng.gen::<f32>(), rng.gen::<f32>()),
-            velocity: Vector2::zero(),
+            position: vec2(rng.gen::<f32>(), rng.gen::<f32>()),
+            velocity: Vec2::ZERO,
         })
         .collect();
 
-    let (mut rl, thread) = raylib::init()
-        .size(WIDTH, HEIGHT)
-        .title("Particle Life")
-        .build();
-
-    while !rl.window_should_close() {
-        let mut d = rl.begin_drawing(&thread);
-        d.clear_background(Color::BLACK);
-        d.draw_fps(0, 0);
+    loop {
+        clear_background(BLACK);
+        draw_text(format!("FPS {}", get_fps()).as_str(), 10., 30., 30., WHITE);
 
         population = update_population(&population, &attraction_matrix);
 
-        if d.is_mouse_button_down(MouseButton::MOUSE_LEFT_BUTTON) {
-            let mut mouse_pos = d.get_mouse_position();
-            mouse_pos.x /= WIDTH as f32;
-            mouse_pos.y /= HEIGHT as f32;
+        if is_mouse_button_down(MouseButton::Left) {
+            let (mouse_x, mouse_y) = mouse_position();
+            let mouse_pos = vec2(mouse_x / screen_width(), mouse_y / screen_height());
             population = population
                 .iter_mut()
                 .map(|p| {
-                    p.velocity -= (p.position - mouse_pos).normalized() * 0.5;
+                    p.velocity -= (p.position - mouse_pos).normalize() * 0.5;
                     *p
                 })
                 .collect();
         }
 
         for p in &population {
-            d.draw_circle(
-                (p.position.x * WIDTH as f32) as i32,
-                (p.position.y * HEIGHT as f32) as i32,
+            draw_circle(
+                p.position.x * screen_width() as f32,
+                p.position.y * screen_height() as f32,
                 2.,
                 colors[p.color],
             );
         }
+
+        next_frame().await
     }
 }
