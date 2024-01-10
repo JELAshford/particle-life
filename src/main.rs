@@ -52,7 +52,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity += total_force * TIME_STEP;
 
             // Push toward centre
-            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 16.;
+            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 32.;
 
             new_p
         })
@@ -108,7 +108,7 @@ async fn main() {
             population = population
                 .iter_mut()
                 .map(|p| {
-                    p.velocity -= (p.position - mouse_pos).normalize() * 0.5;
+                    p.velocity -= (p.position - mouse_pos).normalize() * 0.1;
                     *p
                 })
                 .collect();
