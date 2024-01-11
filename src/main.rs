@@ -8,9 +8,29 @@ struct Particle {
     velocity: Vec2,
 }
 
+fn conf() -> Conf {
+    Conf {
+        window_title: String::from("Particle Life"),
+        window_width: 800,
+        window_height: 800,
+        fullscreen: false,
+        ..Default::default()
+    }
+}
+
 fn flat_matrix(side_length: usize) -> Vec<f32> {
     (0..(side_length * side_length))
         .map(|_| rand::gen_range(-1., 1.))
+        .collect()
+}
+
+fn generate_population(num_particles: usize, color_array: &Vec<Color>) -> Vec<Particle> {
+    (0..num_particles)
+        .map(|_| Particle {
+            color: rand::gen_range(0, color_array.len()),
+            position: vec2(rand::gen_range(0., 1.), rand::gen_range(0., 1.)),
+            velocity: Vec2::ZERO,
+        })
         .collect()
 }
 
@@ -68,87 +88,80 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
         .collect()
 }
 
+fn attract_to_mouse(mut pop: Vec<Particle>) -> Vec<Particle> {
+    if is_mouse_button_down(MouseButton::Left) {
+        let (mouse_x, mouse_y) = mouse_position();
+        let mouse_pos = vec2(mouse_x / screen_width(), mouse_y / screen_height());
+        pop = pop
+            .iter_mut()
+            .map(|p| {
+                p.velocity -= (p.position - mouse_pos).normalize() * 0.1;
+                *p
+            })
+            .collect();
+    }
+    pop
+}
+
+fn draw_fps() -> () {
+    draw_text(format!("FPS {}", get_fps()).as_str(), 10., 30., 30., WHITE);
+}
+
+fn draw_grid() -> () {
+    let mut screen_x: f32 = 0.;
+    while screen_x < 1. {
+        draw_line(
+            screen_x * screen_width(),
+            0.,
+            screen_x * screen_width(),
+            screen_height(),
+            1.,
+            WHITE,
+        );
+        screen_x += MAX_RADIUS;
+    }
+    let mut screen_y: f32 = 0.;
+    while screen_y < 1. {
+        draw_line(
+            0.,
+            screen_y * screen_height(),
+            screen_width(),
+            screen_y * screen_height(),
+            1.,
+            WHITE,
+        );
+        screen_y += MAX_RADIUS;
+    }
+}
+
+fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
+    for p in pop {
+        draw_circle(
+            p.position.x * screen_width() as f32,
+            p.position.y * screen_height() as f32,
+            2.,
+            color_array[p.color],
+        );
+    }
+}
+
 const MAX_RADIUS: f32 = 0.05;
 const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
 const NUM_PARTICLES: usize = 5000;
 
-fn conf() -> Conf {
-    Conf {
-        window_title: String::from("Particle Life"),
-        window_width: 800,
-        window_height: 800,
-        fullscreen: false,
-        ..Default::default()
-    }
-}
-
 #[macroquad::main(conf)]
 async fn main() {
     let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
     let attraction_matrix = flat_matrix(colors.len());
-
-    let mut population: Vec<Particle> = (0..NUM_PARTICLES)
-        .map(|_| Particle {
-            color: rand::gen_range(0, colors.len()),
-            position: vec2(rand::gen_range(0., 1.), rand::gen_range(0., 1.)),
-            velocity: Vec2::ZERO,
-        })
-        .collect();
-
+    let mut population: Vec<Particle> = generate_population(NUM_PARTICLES, &colors);
     loop {
         clear_background(BLACK);
-        draw_text(format!("FPS {}", get_fps()).as_str(), 10., 30., 30., WHITE);
-
         population = update_population(&population, &attraction_matrix);
-
-        if is_mouse_button_down(MouseButton::Left) {
-            let (mouse_x, mouse_y) = mouse_position();
-            let mouse_pos = vec2(mouse_x / screen_width(), mouse_y / screen_height());
-            population = population
-                .iter_mut()
-                .map(|p| {
-                    p.velocity -= (p.position - mouse_pos).normalize() * 0.1;
-                    *p
-                })
-                .collect();
-        }
-
-        // draw_grid
-        let mut screen_x: f32 = 0.;
-        while screen_x < 1. {
-            draw_line(
-                screen_x * screen_width(),
-                0.,
-                screen_x * screen_width(),
-                screen_height(),
-                1.,
-                WHITE,
-            );
-            screen_x += MAX_RADIUS;
-        }
-        let mut screen_y: f32 = 0.;
-        while screen_y < 1. {
-            draw_line(
-                0.,
-                screen_y * screen_height(),
-                screen_width(),
-                screen_y * screen_height(),
-                1.,
-                WHITE,
-            );
-            screen_y += MAX_RADIUS;
-        }
-
-        for p in &population {
-            draw_circle(
-                p.position.x * screen_width() as f32,
-                p.position.y * screen_height() as f32,
-                2.,
-                colors[p.color],
-            );
-        }
-
+        population = attract_to_mouse(population);
+        draw_grid();
+        draw_particles(&population, &colors);
+        draw_fps();
         next_frame().await
     }
 }
