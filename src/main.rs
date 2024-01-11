@@ -52,7 +52,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity += total_force * TIME_STEP;
 
             // Push toward centre
-            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 32.;
+            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 128.;
 
             new_p
         })
@@ -68,10 +68,10 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
         .collect()
 }
 
-const MAX_RADIUS: f32 = 0.1;
-const TIME_STEP: f32 = 0.01;
+const MAX_RADIUS: f32 = 0.05;
+const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 3000;
+const NUM_PARTICLES: usize = 5000;
 
 fn conf() -> Conf {
     Conf {
@@ -112,6 +112,32 @@ async fn main() {
                     *p
                 })
                 .collect();
+        }
+
+        // draw_grid
+        let mut screen_x: f32 = 0.;
+        while screen_x < 1. {
+            draw_line(
+                screen_x * screen_width(),
+                0.,
+                screen_x * screen_width(),
+                screen_height(),
+                1.,
+                WHITE,
+            );
+            screen_x += MAX_RADIUS;
+        }
+        let mut screen_y: f32 = 0.;
+        while screen_y < 1. {
+            draw_line(
+                0.,
+                screen_y * screen_height(),
+                screen_width(),
+                screen_y * screen_height(),
+                1.,
+                WHITE,
+            );
+            screen_y += MAX_RADIUS;
         }
 
         for p in &population {
