@@ -1,12 +1,8 @@
 use macroquad::prelude::*;
 use rayon::prelude::*;
 
-#[derive(PartialEq, Clone, Copy)]
-struct Particle {
-    color: usize,
-    position: Vec2,
-    velocity: Vec2,
-}
+mod grid;
+use grid::{Grid, Particle};
 
 fn conf() -> Conf {
     Conf {
@@ -55,11 +51,64 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
     let screen_width = screen_width();
     let screen_height = screen_height();
     let mut new_population: Vec<Particle> = population
-        .par_iter()
+        .iter()
         .map(|p1| {
             let mut total_force = Vec2::ZERO;
             for p2 in population {
                 if p1 == p2 {
+                    continue;
+                };
+                let distance = p1.position.distance(p2.position);
+                if (distance > 0.) & (distance < MAX_RADIUS) {
+                    let f = force(
+                        distance / MAX_RADIUS,
+                        attractions[(p1.color * 3) + p2.color],
+                        0.3,
+                    );
+                    total_force += ((p2.position - p1.position) / distance) * f;
+                }
+            }
+            total_force *= MAX_RADIUS;
+            let mut new_p = *p1;
+            new_p.velocity *= friction_factor;
+            new_p.velocity += total_force * TIME_STEP;
+
+            // Push toward centre
+            new_p.velocity -= (new_p.position - vec2(screen_width / 2., screen_height / 2.)) / 128.;
+
+            new_p
+        })
+        .collect();
+
+    // update positions
+    new_population
+        .iter_mut()
+        .map(|p| {
+            p.position += p.velocity * TIME_STEP;
+            *p
+        })
+        .collect()
+}
+
+fn update_population_optim(
+    population: &Vec<Particle>,
+    attractions: &Vec<f32>,
+    grid: &Grid,
+) -> Vec<Particle> {
+    let friction_factor: f32 = 0.5_f32.powf(TIME_STEP / FRICTION_HALF_LIFE);
+
+    // Update velocity
+    // (can't use macroquad accessor functions inside rayon parallel iter)
+    let screen_width = screen_width();
+    let screen_height = screen_height();
+    let mut new_population: Vec<Particle> = population
+        .iter()
+        .map(|p1| {
+            let mut total_force = Vec2::ZERO;
+            let possible_neighbour_indexes = &grid.get_candidates(p1.position);
+            for p2_ind in possible_neighbour_indexes {
+                let p2 = population[*p2_ind];
+                if p1 == &p2 {
                     continue;
                 };
                 let distance = p1.position.distance(p2.position);
@@ -141,18 +190,24 @@ fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
 const MAX_RADIUS: f32 = 50.; // 0.05
 const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 5000;
+const NUM_PARTICLES: usize = 10000;
 
 #[macroquad::main(conf)]
 async fn main() {
     let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
     let attraction_matrix = flat_matrix(colors.len());
     let mut population: Vec<Particle> = generate_population(NUM_PARTICLES, &colors);
+    let mut grid = Grid::create(MAX_RADIUS, &population);
     loop {
         clear_background(BLACK);
-        population = update_population(&population, &attraction_matrix);
         population = attract_to_mouse(population);
-        draw_grid();
+
+        // population = update_population(&population, &attraction_matrix);
+
+        population = update_population_optim(&population, &attraction_matrix, &grid);
+        grid = Grid::create(MAX_RADIUS, &population);
+
+        // draw_grid();
         draw_particles(&population, &colors);
         draw_fps();
         next_frame().await
