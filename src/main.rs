@@ -28,7 +28,10 @@ fn generate_population(num_particles: usize, color_array: &Vec<Color>) -> Vec<Pa
     (0..num_particles)
         .map(|_| Particle {
             color: rand::gen_range(0, color_array.len()),
-            position: vec2(rand::gen_range(0., 1.), rand::gen_range(0., 1.)),
+            position: vec2(
+                rand::gen_range(0., screen_width()),
+                rand::gen_range(0., screen_height()),
+            ),
             velocity: Vec2::ZERO,
         })
         .collect()
@@ -48,6 +51,9 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
     let friction_factor: f32 = 0.5_f32.powf(TIME_STEP / FRICTION_HALF_LIFE);
 
     // Update velocity
+    // (can't use macroquad accessor functions inside rayon parallel iter)
+    let screen_width = screen_width();
+    let screen_height = screen_height();
     let mut new_population: Vec<Particle> = population
         .par_iter()
         .map(|p1| {
@@ -72,7 +78,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             new_p.velocity += total_force * TIME_STEP;
 
             // Push toward centre
-            new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 128.;
+            new_p.velocity -= (new_p.position - vec2(screen_width / 2., screen_height / 2.)) / 128.;
 
             new_p
         })
@@ -109,27 +115,13 @@ fn draw_fps() -> () {
 
 fn draw_grid() -> () {
     let mut screen_x: f32 = 0.;
-    while screen_x < 1. {
-        draw_line(
-            screen_x * screen_width(),
-            0.,
-            screen_x * screen_width(),
-            screen_height(),
-            1.,
-            WHITE,
-        );
+    while screen_x < screen_width() {
+        draw_line(screen_x, 0., screen_x, screen_height(), 1., WHITE);
         screen_x += MAX_RADIUS;
     }
     let mut screen_y: f32 = 0.;
-    while screen_y < 1. {
-        draw_line(
-            0.,
-            screen_y * screen_height(),
-            screen_width(),
-            screen_y * screen_height(),
-            1.,
-            WHITE,
-        );
+    while screen_y < screen_height() {
+        draw_line(0., screen_y, screen_width(), screen_y, 1., WHITE);
         screen_y += MAX_RADIUS;
     }
 }
@@ -137,15 +129,16 @@ fn draw_grid() -> () {
 fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
     for p in pop {
         draw_circle(
-            p.position.x * screen_width() as f32,
-            p.position.y * screen_height() as f32,
+            p.position.x as f32,
+            p.position.y as f32,
             2.,
             color_array[p.color],
         );
     }
 }
 
-const MAX_RADIUS: f32 = 0.05;
+// const MAX_RADIUS: f32 = 0.05;
+const MAX_RADIUS: f32 = 50.; // 0.05
 const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
 const NUM_PARTICLES: usize = 5000;
