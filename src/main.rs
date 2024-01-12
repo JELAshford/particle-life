@@ -51,7 +51,7 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
     let screen_width = screen_width();
     let screen_height = screen_height();
     let mut new_population: Vec<Particle> = population
-        .iter()
+        .par_iter()
         .map(|p1| {
             let mut total_force = Vec2::ZERO;
             for p2 in population {
@@ -102,7 +102,7 @@ fn update_population_optim(
     let screen_width = screen_width();
     let screen_height = screen_height();
     let mut new_population: Vec<Particle> = population
-        .iter()
+        .par_iter()
         .map(|p1| {
             let mut total_force = Vec2::ZERO;
             let possible_neighbour_indexes = &grid.get_candidates(p1.position);
@@ -143,36 +143,8 @@ fn update_population_optim(
         .collect()
 }
 
-fn attract_to_mouse(mut pop: Vec<Particle>) -> Vec<Particle> {
-    if is_mouse_button_down(MouseButton::Left) {
-        let (mouse_x, mouse_y) = mouse_position();
-        let mouse_pos = vec2(mouse_x / screen_width(), mouse_y / screen_height());
-        pop = pop
-            .iter_mut()
-            .map(|p| {
-                p.velocity -= (p.position - mouse_pos).normalize() * 0.1;
-                *p
-            })
-            .collect();
-    }
-    pop
-}
-
 fn draw_fps() -> () {
     draw_text(format!("FPS {}", get_fps()).as_str(), 10., 30., 30., WHITE);
-}
-
-fn draw_grid() -> () {
-    let mut screen_x: f32 = 0.;
-    while screen_x < screen_width() {
-        draw_line(screen_x, 0., screen_x, screen_height(), 1., WHITE);
-        screen_x += MAX_RADIUS;
-    }
-    let mut screen_y: f32 = 0.;
-    while screen_y < screen_height() {
-        draw_line(0., screen_y, screen_width(), screen_y, 1., WHITE);
-        screen_y += MAX_RADIUS;
-    }
 }
 
 fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
@@ -190,26 +162,49 @@ fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
 const MAX_RADIUS: f32 = 50.; // 0.05
 const TIME_STEP: f32 = 0.02;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 10000;
+const NUM_PARTICLES: usize = 5000;
+const USE_GRID: bool = true;
 
 #[macroquad::main(conf)]
 async fn main() {
     let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
     let attraction_matrix = flat_matrix(colors.len());
     let mut population: Vec<Particle> = generate_population(NUM_PARTICLES, &colors);
-    let mut grid = Grid::create(MAX_RADIUS, &population);
-    loop {
-        clear_background(BLACK);
-        population = attract_to_mouse(population);
-
-        // population = update_population(&population, &attraction_matrix);
-
-        population = update_population_optim(&population, &attraction_matrix, &grid);
-        grid = Grid::create(MAX_RADIUS, &population);
-
-        // draw_grid();
-        draw_particles(&population, &colors);
-        draw_fps();
-        next_frame().await
+    if USE_GRID {
+        let mut grid = Grid::create(MAX_RADIUS, &population);
+        loop {
+            clear_background(BLACK);
+            population = update_population_optim(&population, &attraction_matrix, &grid);
+            grid = Grid::create(MAX_RADIUS, &population);
+            draw_particles(&population, &colors);
+            draw_fps();
+            next_frame().await
+        }
+    } else {
+        loop {
+            clear_background(BLACK);
+            population = update_population(&population, &attraction_matrix);
+            draw_particles(&population, &colors);
+            draw_fps();
+            next_frame().await
+        }
     }
 }
+
+// NUM_PARTICLES = 5000
+//  USE_GRID = false
+//      cargo run --release: ~60fps
+//      CARGO_PROFILE_RELEASE_DEBUG=true sudo cargo flamegraph: ~30-60fps (all over the place!)
+//  USE_GRID = true
+//      cargo run --release: ~15fps
+//      CARGO_PROFILE_RELEASE_DEBUG=true sudo cargo flamegraph: ~30-60fps (all over the place!)
+
+// NUM_PARTICLES = 10000
+//  USE_GRID = false
+//      cargo run --release: ~15fps
+//      CARGO_PROFILE_RELEASE_DEBUG=true sudo cargo flamegraph: ~15-20fps
+//  USE_GRID = true
+//      cargo run --release: ~7fps
+//      CARGO_PROFILE_RELEASE_DEBUG=true sudo cargo flamegraph: ~30fps
+
+// My best bet is somehow using the CARGO_PROFILE_RELEASE_DEBUG flag is letting rayon actually work?! but why only then?!
