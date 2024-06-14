@@ -107,33 +107,6 @@ fn draw_fps() -> () {
     draw_text(format!("FPS {}", get_fps()).as_str(), 10., 30., 30., WHITE);
 }
 
-fn draw_grid() -> () {
-    let mut screen_x: f32 = 0.;
-    while screen_x < 1. {
-        draw_line(
-            screen_x * screen_width(),
-            0.,
-            screen_x * screen_width(),
-            screen_height(),
-            1.,
-            WHITE,
-        );
-        screen_x += MAX_RADIUS;
-    }
-    let mut screen_y: f32 = 0.;
-    while screen_y < 1. {
-        draw_line(
-            0.,
-            screen_y * screen_height(),
-            screen_width(),
-            screen_y * screen_height(),
-            1.,
-            WHITE,
-        );
-        screen_y += MAX_RADIUS;
-    }
-}
-
 fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
     for p in pop {
         draw_circle(
@@ -159,7 +132,6 @@ async fn main() {
         clear_background(BLACK);
         population = update_population(&population, &attraction_matrix);
         population = attract_to_mouse(population);
-        draw_grid();
         draw_particles(&population, &colors);
         draw_fps();
         next_frame().await
