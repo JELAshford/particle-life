@@ -1,4 +1,7 @@
+use ::rand::distributions::{Distribution, Uniform};
+use ::rand::prelude::*;
 use macroquad::prelude::*;
+use rand_chacha::ChaCha8Rng;
 use rayon::prelude::*;
 
 #[derive(PartialEq, Clone, Copy)]
@@ -18,10 +21,23 @@ fn conf() -> Conf {
     }
 }
 
-fn flat_matrix(side_length: usize) -> Vec<f32> {
+fn flat_matrix(side_length: usize, rand_obj: &mut ChaCha8Rng) -> Vec<f32> {
+    let dist = Uniform::from(-1f32..1f32);
     (0..(side_length * side_length))
-        .map(|_| rand::gen_range(-1., 1.))
+        .map(|_| dist.sample(rand_obj))
         .collect()
+}
+
+fn reset_attraction(
+    attractions: Vec<f32>,
+    colours: &Vec<Color>,
+    rand_obj: &mut ChaCha8Rng,
+) -> Vec<f32> {
+    if is_key_pressed(KeyCode::Space) {
+        flat_matrix(colours.len(), rand_obj)
+    } else {
+        attractions
+    }
 }
 
 fn generate_population(num_particles: usize, color_array: &Vec<Color>) -> Vec<Particle> {
@@ -118,18 +134,21 @@ fn draw_particles(pop: &Vec<Particle>, color_array: &Vec<Color>) -> () {
     }
 }
 
-const MAX_RADIUS: f32 = 0.05;
-const TIME_STEP: f32 = 0.02;
+const SEED: u64 = 50;
+const MAX_RADIUS: f32 = 0.1;
+const TIME_STEP: f32 = 0.01;
 const FRICTION_HALF_LIFE: f32 = 0.04;
-const NUM_PARTICLES: usize = 5000;
+const NUM_PARTICLES: usize = 4000;
 
 #[macroquad::main(conf)]
 async fn main() {
-    let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, GRAY, SKYBLUE, ORANGE, PINK, PURPLE];
-    let attraction_matrix = flat_matrix(colors.len());
+    let mut rng = ChaCha8Rng::seed_from_u64(SEED);
+    let colors: Vec<Color> = vec![RED, BLUE, GREEN, WHITE, PINK];
+    let mut attraction_matrix = flat_matrix(colors.len(), &mut rng);
     let mut population: Vec<Particle> = generate_population(NUM_PARTICLES, &colors);
     loop {
         clear_background(BLACK);
+        attraction_matrix = reset_attraction(attraction_matrix, &colors, &mut rng);
         population = update_population(&population, &attraction_matrix);
         population = attract_to_mouse(population);
         draw_particles(&population, &colors);
