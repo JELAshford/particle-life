@@ -204,6 +204,7 @@ fn draw_particles(pop: &Vec<Particle>, color_array: &[Color], camera_obj: &Camer
 }
 
 fn update_camera(mut camera: Camera) -> Camera {
+    let (_scroll_x, scroll_y) = mouse_wheel();
     if is_key_down(KeyCode::W) {
         camera.position_vel.y -= 0.3;
     }
@@ -216,11 +217,11 @@ fn update_camera(mut camera: Camera) -> Camera {
     if is_key_down(KeyCode::D) {
         camera.position_vel.x += 0.3;
     }
-    if is_key_pressed(KeyCode::Up) {
-        camera.zoom_mult -= 0.05;
+    if scroll_y < 0. {
+        camera.zoom_mult -= 0.005;
     }
-    if is_key_pressed(KeyCode::Down) {
-        camera.zoom_mult += 0.05;
+    if scroll_y > 0. {
+        camera.zoom_mult += 0.005;
     }
     camera.update()
 }
