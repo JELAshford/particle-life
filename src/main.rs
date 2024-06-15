@@ -62,9 +62,7 @@ fn force(r: f32, a: f32, beta: f32) -> f32 {
 
 fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<Particle> {
     let friction_factor: f32 = 0.5_f32.powf(TIME_STEP / FRICTION_HALF_LIFE);
-
-    // Update velocity
-    let mut new_population: Vec<Particle> = population
+    population
         .par_iter()
         .map(|p1| {
             let mut total_force = Vec2::ZERO;
@@ -83,6 +81,8 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
                 }
             }
             total_force *= MAX_RADIUS;
+
+            // Create new particle with velocity driven by this force
             let mut new_p = *p1;
             new_p.velocity *= friction_factor;
             new_p.velocity += total_force * TIME_STEP;
@@ -90,16 +90,9 @@ fn update_population(population: &Vec<Particle>, attractions: &Vec<f32>) -> Vec<
             // Push toward centre
             new_p.velocity -= (new_p.position - vec2(0.5, 0.5)) / 128.;
 
+            // Update position based on this velocity
+            new_p.position += new_p.velocity * TIME_STEP;
             new_p
-        })
-        .collect();
-
-    // update positions
-    new_population
-        .iter_mut()
-        .map(|p| {
-            p.position += p.velocity * TIME_STEP;
-            *p
         })
         .collect()
 }
